@@ -3171,25 +3171,12 @@ const App = () => {
         return;
       }
 
-      const cleared = await clearAllFirestoreData();
+      const cleared = await clearFirestoreCollection('kpi_reports');
       if (cleared) {
         // ล้างข้อมูลใน state ด้วย
         setKpis([]);
         setChartData([]);
         setTableRows([]);
-        setConsumablesTableData([]);
-        setConsumablesKpis([]);
-        setConsumablesChartData([]);
-        setOtTableData([]);
-        setOtKpis([]);
-        setOtChartData([]);
-        setLeaveTableData([]);
-        setLeaveKpis([]);
-        setLeaveChartData([]);
-        setAccidentTableData([]);
-        setAccidentKpis([]);
-        setAccidentChartData([]);
-        setWorkloadReportData([]);
         
         alert('✅ ลบข้อมูลทั้งหมดจาก Firestore เรียบร้อยแล้ว');
       } else {
