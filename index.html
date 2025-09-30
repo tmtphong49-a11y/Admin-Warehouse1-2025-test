@@ -423,7 +423,7 @@ const translations = {
     th: {
         // Sidebar
         'kpiReport': 'รายงาน KPI',
-        'consumablesReport': 'รายงานวัสดุสิ้นเปลือง',
+        'consumablesReport': 'วัสดุสิ้นเปลือง',
         'otReport': 'รายงาน OT',
         'leaveReport': 'รายงานการลา',
         'accidentReport': 'รายงานอุบัติเหตุ',
@@ -1474,7 +1474,7 @@ const DataTable = ({ data }) => {
                   <div className="font-medium text-light-text-primary dark:text-dark-text-primary">{row.kpiNo || 'N/A'}</div>
                 </td>
                 <td className="p-4 max-w-xs">
-                  <div className="font-medium text-light-text-primary dark:text-dark-text-primary truncate" title={row.kpi.title}>{row.kpi.title}</div>
+                  <div className="font-medium text-light-text-primary dark:text-dark-text-primary whitespace-normal break-words" title={row.kpi.title}>{row.kpi.title}</div>
                 </td>
                 <td className="p-4">
                     <div className="font-medium text-light-text-primary dark:text-dark-text-primary">{row.target}</div>
