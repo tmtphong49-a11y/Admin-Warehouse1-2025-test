@@ -355,13 +355,13 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
       setWorkloadReportData([]);
     }
 
+    console.log('🎉 Finished loading data from Firestore');
     if (hasAnyData) {
-      console.log('🎉 Finished loading data from Firestore');
-      return true;
+      console.log('📊 Data found and loaded');
     } else {
-      console.log('📭 No data found in Firestore - all collections are empty');
-      return false;
+      console.log('📭 No data found in Firestore - displaying empty data');
     }
+    return true; // คืนค่า true เสมอเมื่อ Firebase เชื่อมต่อได้ เพื่อให้ KPI Details ถูกโหลด
   } catch (error) {
     console.error('❌ Error loading data from Firestore:', error);
     return false;
@@ -3344,7 +3344,14 @@ const App = () => {
         if (firebaseConnected) {
           // โหลดข้อมูลจาก Firestore (ถ้าไม่มีข้อมูลจะแสดงข้อมูลว่าง)
           console.log('🔄 Loading data from Firestore...');
-          await loadDataFromFirestore();
+          const loaded = await loadDataFromFirestore();
+          
+          // โหลดข้อมูล KPI Details หลังจากโหลดข้อมูลหลักเสร็จแล้ว
+          if (loaded) {
+            setTimeout(async () => {
+              await loadKpiDetailsFromFirestore();
+            }, 1500);
+          }
         } else {
           // ถ้า Firebase ไม่เชื่อมต่อ ให้ตั้งค่าข้อมูลว่าง
           console.log('⚠️ Firebase not connected, setting empty data...');
