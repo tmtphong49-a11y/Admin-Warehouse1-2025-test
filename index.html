@@ -3959,8 +3959,8 @@ const App = () => {
     switch (activePage) {
       case 'kpiReport':
         return (
-          <div className="container mx-auto">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="container mx-auto max-w-[1400px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-6 mb-8">
               {kpis.map((kpi, index) => (
                 <KPICard
                   key={index}
@@ -3975,7 +3975,9 @@ const App = () => {
               ))}
             </div>
             <div className="flex flex-col gap-8">
-              <MainChart data={chartData} theme={theme} />
+              <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg p-6">
+                <MainChart data={chartData} title={t('kpiProgressOverview')} theme={theme} />
+              </div>
               <DataTable data={tableRows} />
             </div>
           </div>
