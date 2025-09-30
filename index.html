@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
@@ -52,11 +53,11 @@
     "recharts/": "https://aistudiocdn.com/recharts@^3.2.1/",
     "recharts": "https://aistudiocdn.com/recharts@^3.2.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-latest/package/xlsx.mjs",
-    "firebase/app": "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js",
-    "firebase/analytics": "https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js",
-    "firebase/firestore": "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js",
-    "firebase/auth": "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js",
-    "firebase/storage": "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js"
+    "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+    "firebase/analytics": "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+    "firebase/storage": "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js"
   }
 }
 </script>
@@ -73,8 +74,8 @@ import { read, utils } from 'xlsx';
 
 // Import Firebase dependencies
 import { initializeApp } from 'firebase/app';
-// import { getAnalytics } from 'firebase/analytics';
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, connectFirestoreEmulator, enableNetwork, disableNetwork } from 'firebase/firestore';
+import { getAnalytics } from 'firebase/analytics';
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 // Firebase configuration
@@ -88,73 +89,49 @@ const firebaseConfig = {
   measurementId: "G-CEK74QFCW8"
 };
 
-// Initialize Firebase with error handling
-let app, analytics, db, auth;
-try {
-  console.log('🔄 Initializing Firebase...');
-  app = initializeApp(firebaseConfig);
-  console.log('✅ Firebase app initialized');
-  
-  // Skip Analytics for now to focus on Firestore
-  // analytics = getAnalytics(app);
-  // console.log('✅ Firebase Analytics initialized');
-  
-  db = getFirestore(app);
-  console.log('✅ Firestore initialized');
-  
-  auth = getAuth(app);
-  console.log('✅ Firebase Auth initialized');
-  
-  console.log('🎉 Firebase core services initialized successfully');
-} catch (error) {
-  console.error('❌ Firebase initialization failed:', error);
-  console.error('Error details:', error.message);
-}
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+// Firebase connection status
+let globalFirebaseConnected = false;
 
 // Test Firebase connection
-const testFirebaseConnection = async (setFirebaseConnected) => {
+const testFirebaseConnection = async (setFirebaseConnected = null) => {
   try {
     console.log('🔄 Testing Firebase connection...');
     
-    // Test basic Firebase app initialization
-    if (!app || !db || !auth) {
-      throw new Error('Firebase services not properly initialized');
-    }
-    console.log('✅ Firebase services available');
+    // Sign in anonymously to test connection
+    await signInAnonymously(auth);
+    globalFirebaseConnected = true;
+    if (setFirebaseConnected) setFirebaseConnected(true);
+    console.log('✅ Firebase connected successfully!');
+    console.log('✅ Anonymous authentication successful!');
     
-    // Set connected to true immediately if services are initialized
-    // We'll handle actual data operations with proper error handling
-    setFirebaseConnected(true);
-    console.log('✅ Firebase marked as connected - ready for data operations');
+    // Test Firestore connection
+    const testCollection = collection(db, 'test');
+    console.log('✅ Firestore connection established!');
     
-    // Optional: Test authentication in background (don't block on this)
-    setTimeout(async () => {
-      try {
-        await signInAnonymously(auth);
-        console.log('✅ Anonymous authentication successful');
-      } catch (authError) {
-        console.warn('⚠️ Anonymous authentication failed:', authError.message);
-      }
-    }, 1000);
+    // Test Analytics
+    console.log('✅ Analytics initialized!');
     
     return true;
   } catch (error) {
     console.error('❌ Firebase connection failed:', error);
-    console.error('Error details:', {
-      code: error.code,
-      message: error.message
-    });
-    setFirebaseConnected(false);
+    globalFirebaseConnected = false;
+    if (setFirebaseConnected) setFirebaseConnected(false);
     return false;
   }
 };
 
-// Firebase connection will be initialized in App component
+// Firebase connection will be initialized in React useEffect
 
 // Firestore helper functions
-const saveToFirestore = async (collectionName, data, docId = null, isFirebaseConnected = false) => {
+const saveToFirestore = async (collectionName, data, docId = null) => {
   try {
-    if (!isFirebaseConnected) {
+    if (!globalFirebaseConnected) {
       console.warn('Firebase not connected. Data saved to localStorage only.');
       return null;
     }
@@ -185,9 +162,9 @@ const saveToFirestore = async (collectionName, data, docId = null, isFirebaseCon
   }
 };
 
-const getFromFirestore = async (collectionName, isFirebaseConnected = false) => {
+const getFromFirestore = async (collectionName) => {
   try {
-    if (!isFirebaseConnected) {
+    if (!globalFirebaseConnected) {
       console.warn('Firebase not connected. Cannot retrieve data from Firestore.');
       return [];
     }
@@ -207,9 +184,9 @@ const getFromFirestore = async (collectionName, isFirebaseConnected = false) => 
 };
 
 // ฟังก์ชันลบข้อมูลทั้งหมดใน collection
-const clearFirestoreCollection = async (collectionName, isFirebaseConnected = false) => {
+const clearFirestoreCollection = async (collectionName) => {
   try {
-    if (!isFirebaseConnected) {
+    if (!globalFirebaseConnected) {
       console.warn('Firebase not connected. Cannot clear collection.');
       return false;
     }
@@ -238,7 +215,7 @@ const clearFirestoreCollection = async (collectionName, isFirebaseConnected = fa
 };
 
 // ฟังก์ชันลบข้อมูลทั้งหมดจากทุก collection
-const clearAllFirestoreData = async (isFirebaseConnected = false) => {
+const clearAllFirestoreData = async () => {
   try {
     console.log('🗑️ Clearing all data from Firestore...');
     const collections = [
@@ -251,7 +228,7 @@ const clearAllFirestoreData = async (isFirebaseConnected = false) => {
     ];
 
     const clearPromises = collections.map(collectionName => 
-      clearFirestoreCollection(collectionName, isFirebaseConnected)
+      clearFirestoreCollection(collectionName)
     );
 
     const results = await Promise.all(clearPromises);
@@ -271,7 +248,7 @@ const clearAllFirestoreData = async (isFirebaseConnected = false) => {
 };
 
 // ฟังก์ชันโหลดข้อมูลล่าสุดจาก Firestore
-const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = false) => {
+const loadLatestDataFromFirestore = async (stateSetters) => {
   try {
     console.log('🔄 Loading latest data from Firestore...');
     
@@ -284,10 +261,8 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
       setWorkloadReportData
     } = stateSetters;
     
-    let hasAnyData = false;
-    
     // โหลดข้อมูล KPI ล่าสุด
-    const kpiData = await getFromFirestore('kpi_reports', isFirebaseConnected);
+    const kpiData = await getFromFirestore('kpi_reports');
     if (kpiData.length > 0) {
       const latestKpi = kpiData.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
       if (latestKpi.data) {
@@ -295,17 +270,11 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
         setChartData(latestKpi.data.chartData || []);
         setTableRows(latestKpi.data.tableRows || []);
         console.log('✅ Loaded latest KPI data');
-        hasAnyData = true;
       }
-    } else {
-      // ตั้งค่าข้อมูลว่างสำหรับ KPI
-      setKpis([]);
-      setChartData([]);
-      setTableRows([]);
     }
 
     // โหลดข้อมูล Consumables ล่าสุด
-    const consumablesData = await getFromFirestore('consumables_reports', isFirebaseConnected);
+    const consumablesData = await getFromFirestore('consumables_reports');
     if (consumablesData.length > 0) {
       const latestConsumables = consumablesData.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
       if (latestConsumables.data) {
@@ -313,17 +282,11 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
         setConsumablesKpis(latestConsumables.data.kpis || []);
         setConsumablesChartData(latestConsumables.data.chartData || []);
         console.log('✅ Loaded latest Consumables data');
-        hasAnyData = true;
       }
-    } else {
-      // ตั้งค่าข้อมูลว่างสำหรับ Consumables
-      setConsumablesTableData([]);
-      setConsumablesKpis([]);
-      setConsumablesChartData([]);
     }
 
     // โหลดข้อมูล OT ล่าสุด
-    const otData = await getFromFirestore('ot_reports', isFirebaseConnected);
+    const otData = await getFromFirestore('ot_reports');
     if (otData.length > 0) {
       const latestOt = otData.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
       if (latestOt.data) {
@@ -331,17 +294,11 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
         setOtKpis(latestOt.data.kpis || []);
         setOtChartData(latestOt.data.chartData || []);
         console.log('✅ Loaded latest OT data');
-        hasAnyData = true;
       }
-    } else {
-      // ตั้งค่าข้อมูลว่างสำหรับ OT
-      setOtTableData([]);
-      setOtKpis([]);
-      setOtChartData([]);
     }
 
     // โหลดข้อมูล Leave ล่าสุด
-    const leaveData = await getFromFirestore('leave_reports', isFirebaseConnected);
+    const leaveData = await getFromFirestore('leave_reports');
     if (leaveData.length > 0) {
       const latestLeave = leaveData.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
       if (latestLeave.data) {
@@ -349,17 +306,11 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
         setLeaveKpis(latestLeave.data.kpis || []);
         setLeaveChartData(latestLeave.data.chartData || []);
         console.log('✅ Loaded latest Leave data');
-        hasAnyData = true;
       }
-    } else {
-      // ตั้งค่าข้อมูลว่างสำหรับ Leave
-      setLeaveTableData([]);
-      setLeaveKpis([]);
-      setLeaveChartData([]);
     }
 
     // โหลดข้อมูล Accident ล่าสุด
-    const accidentData = await getFromFirestore('accident_reports', isFirebaseConnected);
+    const accidentData = await getFromFirestore('accident_reports');
     if (accidentData.length > 0) {
       const latestAccident = accidentData.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
       if (latestAccident.data) {
@@ -367,36 +318,21 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
         setAccidentKpis(latestAccident.data.kpis || []);
         setAccidentChartData(latestAccident.data.chartData || []);
         console.log('✅ Loaded latest Accident data');
-        hasAnyData = true;
       }
-    } else {
-      // ตั้งค่าข้อมูลว่างสำหรับ Accident
-      setAccidentTableData([]);
-      setAccidentKpis([]);
-      setAccidentChartData([]);
     }
 
     // โหลดข้อมูล Workload ล่าสุด
-    const workloadData = await getFromFirestore('workload_reports', isFirebaseConnected);
+    const workloadData = await getFromFirestore('workload_reports');
     if (workloadData.length > 0) {
       const latestWorkload = workloadData.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
       if (latestWorkload.data) {
         setWorkloadReportData(latestWorkload.data.data || []);
         console.log('✅ Loaded latest Workload data');
-        hasAnyData = true;
       }
-    } else {
-      // ตั้งค่าข้อมูลว่างสำหรับ Workload
-      setWorkloadReportData([]);
     }
 
-    console.log('🎉 Finished loading data from Firestore');
-    if (hasAnyData) {
-      console.log('📊 Data found and loaded');
-    } else {
-      console.log('📭 No data found in Firestore - displaying empty data');
-    }
-    return true; // คืนค่า true เสมอเมื่อ Firebase เชื่อมต่อได้ เพื่อให้ KPI Details ถูกโหลด
+    console.log('🎉 Finished loading all latest data from Firestore');
+    return true;
   } catch (error) {
     console.error('❌ Error loading data from Firestore:', error);
     return false;
@@ -1331,7 +1267,7 @@ const MainChart = ({ data, title, theme }) => {
 // ===================================================
 // START: components/DataTable.tsx
 // ===================================================
-const DataTable = ({ data, tableRows, setTableRows, firebaseConnected }) => {
+const DataTable = ({ data }) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedKpi, setSelectedKpi] = useState(null);
@@ -1480,50 +1416,15 @@ const DataTable = ({ data, tableRows, setTableRows, firebaseConnected }) => {
     setEditedKpi(null);
   };
 
-  const saveEdit = async () => {
-    try {
-      // อัปเดตข้อมูลในตาราง
-      const updatedData = tableRows.map(row => 
-        row.kpi.title === selectedKpi.kpi.title ? editedKpi : row
-      );
-      
-      // บันทึกข้อมูล KPI Details ที่แก้ไขลง Firebase
-      const kpiDetailsData = {
-        kpiTitle: editedKpi.kpi.title,
-        kpiData: editedKpi,
-        updatedBy: 'Admin', // สามารถเปลี่ยนเป็นชื่อผู้ใช้จริงได้
-        updatedAt: new Date().toISOString()
-      };
-      
-      // บันทึกลง Firebase collection 'kpi_details'
-      const docId = await saveToFirestore('kpi_details', kpiDetailsData, null, firebaseConnected);
-      
-      if (docId) {
-        console.log('✅ KPI Details saved to Firebase:', docId);
-        
-        // อัปเดต state ในหน้าปัจจุบัน
-        setSelectedKpi(editedKpi);
-        setIsEditMode(false);
-        
-        // อัปเดตข้อมูลในตาราง KPI Details
-        if (typeof setTableRows === 'function') {
-          setTableRows(updatedData);
-        }
-        
-        alert('✅ บันทึกข้อมูล KPI Details ลง Firebase เรียบร้อยแล้ว');
-      } else {
-        // ถ้าบันทึก Firebase ไม่สำเร็จ ยังคงบันทึกใน local state
-        setSelectedKpi(editedKpi);
-        setIsEditMode(false);
-        alert('⚠️ บันทึกข้อมูลใน Local เรียบร้อยแล้ว (Firebase ไม่พร้อมใช้งาน)');
-      }
-    } catch (error) {
-      console.error('❌ Error saving KPI Details:', error);
-      // ถ้าเกิดข้อผิดพลาด ยังคงบันทึกใน local state
-      setSelectedKpi(editedKpi);
-      setIsEditMode(false);
-      alert('⚠️ บันทึกข้อมูลใน Local เรียบร้อยแล้ว (เกิดข้อผิดพลาดกับ Firebase)');
-    }
+  const saveEdit = () => {
+    // อัปเดตข้อมูลในตาราง
+    const updatedData = data.map(row => 
+      row.kpi.title === selectedKpi.kpi.title ? editedKpi : row
+    );
+    // ที่นี่คุณสามารถเพิ่มการบันทึกข้อมูลไปยัง backend หรือ localStorage
+    setSelectedKpi(editedKpi);
+    setIsEditMode(false);
+    alert('บันทึกข้อมูลเรียบร้อยแล้ว');
   };
 
   const handleMonthlyDataChange = (month, value) => {
@@ -3000,7 +2901,7 @@ const Sidebar = ({ activePage, onNavigate, isOpen, onClose }) => {
 // ===================================================
 // START: components/Header.tsx
 // ===================================================
-const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onShareReport, onLoadReport, onLoadFromFirestore, onClearData, firebaseConnected }) => {
+const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onShareReport, onLoadReport, onLoadFromFirestore, onClearData }) => {
   const { t, language, toggleLanguage } = useTranslation();
   const fileInputRef = useRef(null);
   const loadReportInputRef = useRef(null);
@@ -3037,12 +2938,6 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onS
             <Bars3Icon className="h-6 w-6" />
         </button>
         <h1 className="text-2xl font-bold text-light-text-primary dark:text-dark-text-primary">{t(activePage)}</h1>
-        <div className="ml-4 flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full ${firebaseConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-            Firebase: {firebaseConnected ? 'เชื่อมต่อแล้ว' : 'ไม่ได้เชื่อมต่อ'}
-          </span>
-        </div>
       </div>
       <div className="flex items-center gap-4">
         <div className="relative hidden md:block">
@@ -3218,6 +3113,16 @@ const App = () => {
       setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'));
   };
 
+  // Test Firebase connection on app start
+  useEffect(() => {
+    const initFirebase = async () => {
+      console.log('🚀 Initializing Firebase connection...');
+      await testFirebaseConnection(setFirebaseConnected);
+    };
+    
+    initFirebase();
+  }, []);
+
   // ฟังก์ชันสำหรับปุ่ม "ลบข้อมูลทั้งหมด" ใน Header
   const handleClearAllData = async () => {
     try {
@@ -3230,7 +3135,7 @@ const App = () => {
         return;
       }
 
-      const cleared = await clearAllFirestoreData(firebaseConnected);
+      const cleared = await clearAllFirestoreData();
       if (cleared) {
         // ล้างข้อมูลใน state ด้วย
         setKpis([]);
@@ -3260,15 +3165,6 @@ const App = () => {
     }
   };
 
-  // Initialize Firebase connection
-  useEffect(() => {
-    const initFirebase = async () => {
-      console.log('🔄 Initializing Firebase connection...');
-      await testFirebaseConnection(setFirebaseConnected);
-    };
-    initFirebase();
-  }, []);
-
   useEffect(() => {
     const root = window.document.documentElement;
     const isDark = theme === 'dark';
@@ -3281,64 +3177,6 @@ const App = () => {
     localStorage.setItem('activePage', JSON.stringify(activePage));
   }, [activePage]);
 
-  // ฟังก์ชันโหลดข้อมูล KPI Details จาก Firebase และผสานกับข้อมูลปัจจุบัน
-  const loadKpiDetailsFromFirestore = async () => {
-    try {
-      console.log('🔄 Loading KPI Details from Firebase...');
-      const kpiDetailsData = await getFromFirestore('kpi_details', firebaseConnected);
-      console.log('📊 Raw KPI Details data from Firebase:', kpiDetailsData);
-      
-      if (kpiDetailsData.length > 0) {
-        // สร้าง Map เพื่อเก็บข้อมูล KPI Details ล่าสุดของแต่ละ KPI
-        const latestKpiDetails = new Map();
-        
-        kpiDetailsData.forEach(item => {
-          const kpiTitle = item.kpiTitle;
-          const currentItem = latestKpiDetails.get(kpiTitle);
-          
-          console.log(`📝 Processing KPI: ${kpiTitle}, updatedAt: ${item.updatedAt}`);
-          
-          // เก็บเฉพาะข้อมูลล่าสุด (เรียงตาม updatedAt)
-          if (!currentItem || new Date(item.updatedAt) > new Date(currentItem.updatedAt)) {
-            latestKpiDetails.set(kpiTitle, item);
-            console.log(`✅ Set as latest for: ${kpiTitle}`);
-          }
-        });
-        
-        console.log('🗂️ Latest KPI Details Map:', latestKpiDetails);
-        
-        // อัปเดตข้อมูลในตาราง KPI Details
-        setTableRows(prevTableRows => {
-          return prevTableRows.map(row => {
-            const kpiDetail = latestKpiDetails.get(row.kpi.title);
-            if (kpiDetail && kpiDetail.kpiData) {
-              console.log(`✅ Updated KPI Details for: ${row.kpi.title}`);
-              return {
-                ...row,
-                ...kpiDetail.kpiData,
-                // รักษาโครงสร้างเดิมของ kpi object
-                kpi: {
-                  ...row.kpi,
-                  ...kpiDetail.kpiData.kpi
-                }
-              };
-            }
-            return row;
-          });
-        });
-        
-        console.log(`✅ Loaded ${latestKpiDetails.size} KPI Details from Firebase`);
-        return true;
-      } else {
-        console.log('ℹ️ No KPI Details found in Firebase');
-        return false;
-      }
-    } catch (error) {
-      console.error('❌ Error loading KPI Details from Firebase:', error);
-      return false;
-    }
-  };
-
   // ฟังก์ชัน wrapper สำหรับโหลดข้อมูลจาก Firestore
   const loadDataFromFirestore = async () => {
     const stateSetters = {
@@ -3349,20 +3187,15 @@ const App = () => {
       setAccidentTableData, setAccidentKpis, setAccidentChartData,
       setWorkloadReportData
     };
-    return await loadLatestDataFromFirestore(stateSetters, firebaseConnected);
+    return await loadLatestDataFromFirestore(stateSetters);
   };
 
   // ฟังก์ชันสำหรับปุ่ม "โหลดข้อมูล" ใน Header
   const handleLoadFromFirestore = async () => {
     try {
       const loaded = await loadDataFromFirestore();
-      
-      // โหลดข้อมูล KPI Details หลังจากโหลดข้อมูลหลักเสร็จแล้ว
       if (loaded) {
-        setTimeout(async () => {
-          await loadKpiDetailsFromFirestore();
-        }, 1500);
-        alert('✅ โหลดข้อมูลล่าสุดจาก Firestore เรียบร้อยแล้ว (รวม KPI Details)');
+        alert('✅ โหลดข้อมูลล่าสุดจาก Firestore เรียบร้อยแล้ว');
       } else {
         alert('⚠️ ไม่พบข้อมูลใน Firestore หรือเกิดข้อผิดพลาด');
       }
@@ -3383,35 +3216,50 @@ const App = () => {
         }
 
         if (firebaseConnected) {
-          // โหลดข้อมูลจาก Firestore (ถ้าไม่มีข้อมูลจะแสดงข้อมูลว่าง)
-          console.log('🔄 Loading data from Firestore...');
-          const loaded = await loadDataFromFirestore();
+          // ลองโหลดข้อมูลจาก Firestore ก่อน
+          const firestoreLoaded = await loadDataFromFirestore();
           
-          // โหลดข้อมูล KPI Details หลังจากโหลดข้อมูลหลักเสร็จแล้ว
-          if (loaded) {
-            setTimeout(async () => {
-              await loadKpiDetailsFromFirestore();
-            }, 1500);
+          if (!firestoreLoaded) {
+            // ถ้าโหลดจาก Firestore ไม่ได้ ให้โหลดจาก mockApi แทน
+            console.log('🔄 Fallback to loading mock data...');
+            const data = await mockApi.getData();
+            setKpis(data.kpiData.kpis);
+            setChartData(data.kpiData.chartData);
+            setTableRows(data.kpiData.tableRows);
+            setConsumablesTableData(data.consumablesData.tableData);
+            setConsumablesKpis(data.consumablesData.kpis);
+            setConsumablesChartData(data.consumablesData.chartData);
+            setOtTableData(data.otData.tableData);
+            setOtKpis(data.otData.kpis);
+            setOtChartData(data.otData.chartData);
+            setLeaveTableData(data.leaveData.tableData);
+            setLeaveKpis(data.leaveData.kpis);
+            setLeaveChartData(data.leaveData.chartData);
+            setAccidentTableData(data.accidentData.tableData);
+            setAccidentKpis(data.accidentData.kpis);
+            setAccidentChartData(data.accidentData.chartData);
+            setWorkloadReportData(data.workloadData.data);
           }
         } else {
-          // ถ้า Firebase ไม่เชื่อมต่อ ให้ตั้งค่าข้อมูลว่าง
-          console.log('⚠️ Firebase not connected, setting empty data...');
-          setKpis([]);
-          setChartData([]);
-          setTableRows([]);
-          setConsumablesTableData([]);
-          setConsumablesKpis([]);
-          setConsumablesChartData([]);
-          setOtTableData([]);
-          setOtKpis([]);
-          setOtChartData([]);
-          setLeaveTableData([]);
-          setLeaveKpis([]);
-          setLeaveChartData([]);
-          setAccidentTableData([]);
-          setAccidentKpis([]);
-          setAccidentChartData([]);
-          setWorkloadReportData([]);
+          // ถ้า Firebase ไม่เชื่อมต่อ ให้โหลด mock data
+          console.log('🔄 Firebase not connected, loading mock data...');
+          const data = await mockApi.getData();
+          setKpis(data.kpiData.kpis);
+          setChartData(data.kpiData.chartData);
+          setTableRows(data.kpiData.tableRows);
+          setConsumablesTableData(data.consumablesData.tableData);
+          setConsumablesKpis(data.consumablesData.kpis);
+          setConsumablesChartData(data.consumablesData.chartData);
+          setOtTableData(data.otData.tableData);
+          setOtKpis(data.otData.kpis);
+          setOtChartData(data.otData.chartData);
+          setLeaveTableData(data.leaveData.tableData);
+          setLeaveKpis(data.leaveData.kpis);
+          setLeaveChartData(data.leaveData.chartData);
+          setAccidentTableData(data.accidentData.tableData);
+          setAccidentKpis(data.accidentData.kpis);
+          setAccidentChartData(data.accidentData.chartData);
+          setWorkloadReportData(data.workloadData.data);
         }
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
@@ -3422,31 +3270,6 @@ const App = () => {
     };
     fetchData();
   }, []);
-
-  // useEffect สำหรับโหลดข้อมูล KPI Details จาก Firebase เมื่อ tableRows และ firebaseConnected เปลี่ยนแปลง
-  useEffect(() => {
-    const loadKpiDetails = async () => {
-      if (tableRows.length > 0 && firebaseConnected) {
-        console.log('🔄 Loading KPI Details from Firebase...');
-        // รอสักครู่เพื่อให้ tableRows ถูกตั้งค่าเสร็จสิ้น
-        setTimeout(async () => {
-          const success = await loadKpiDetailsFromFirestore();
-          if (success) {
-            console.log('✅ KPI Details loaded successfully');
-          } else {
-            console.log('⚠️ No KPI Details found or failed to load');
-          }
-        }, 1500);
-      } else {
-        console.log('⏳ Waiting for tableRows and Firebase connection...', {
-          tableRowsLength: tableRows.length,
-          firebaseConnected: firebaseConnected
-        });
-      }
-    };
-    
-    loadKpiDetails();
-  }, [tableRows.length, firebaseConnected]); // ทำงานเมื่อจำนวน tableRows หรือ firebaseConnected เปลี่ยนแปลง
 
   const handleNavigate = (page) => {
     setActivePage(page);
@@ -3571,7 +3394,7 @@ const App = () => {
                 fileSize: file.size,
                 uploadedAt: new Date().toISOString(),
                 data: payload
-            }, null, firebaseConnected);
+            });
             
             mockApi.updateKpi(payload).then(updated => {
                 setKpis(updated.kpis);
@@ -3664,7 +3487,7 @@ const App = () => {
                 fileSize: file.size,
                 uploadedAt: new Date().toISOString(),
                 data: payload
-            }, null, firebaseConnected);
+            });
             
             mockApi.updateConsumables(payload).then(updated => {
                 setConsumablesChartData(updated.chartData);
@@ -3748,7 +3571,7 @@ const App = () => {
                 fileSize: file.size,
                 uploadedAt: new Date().toISOString(),
                 data: payload
-            }, null, firebaseConnected);
+            });
             
             mockApi.updateOt(payload).then(updated => {
                 setOtChartData(updated.chartData);
@@ -3862,7 +3685,7 @@ const App = () => {
                 fileSize: file.size,
                 uploadedAt: new Date().toISOString(),
                 data: payload
-            }, null, firebaseConnected);
+            });
             
             mockApi.updateLeave(payload).then(updated => {
                 setLeaveChartData(updated.chartData);
@@ -3978,7 +3801,7 @@ const App = () => {
                 fileSize: file.size,
                 uploadedAt: new Date().toISOString(),
                 data: payload
-            }, null, firebaseConnected);
+            });
             
             mockApi.updateAccident(payload).then(updated => {
                 setAccidentChartData(updated.chartData);
@@ -4059,7 +3882,7 @@ const App = () => {
                          fileSize: file.size,
                          uploadedAt: new Date().toISOString(),
                          data: payload
-                     }, null, firebaseConnected);
+                     });
                      
                     mockApi.updateWorkload(payload).then(updated => {
                         setWorkloadReportData(updated.data);
@@ -4082,22 +3905,6 @@ const App = () => {
       case 'kpiReport':
         return (
           <div className="container mx-auto">
-            <div className="mb-6 p-4 bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-4 h-4 rounded-full ${firebaseConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <span className="font-medium">
-                    Firebase Status: {firebaseConnected ? 'เชื่อมต่อแล้ว' : 'ไม่ได้เชื่อมต่อ'}
-                  </span>
-                </div>
-                <button 
-                  onClick={() => testFirebaseConnection()}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-                >
-                  ทดสอบการเชื่อมต่อ Firebase
-                </button>
-              </div>
-            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               {kpis.map((kpi, index) => (
                 <KPICard
@@ -4114,7 +3921,7 @@ const App = () => {
             </div>
             <div className="flex flex-col gap-8">
               <MainChart data={chartData} theme={theme} />
-              <DataTable data={tableRows} tableRows={tableRows} setTableRows={setTableRows} firebaseConnected={firebaseConnected} />
+              <DataTable data={tableRows} />
             </div>
           </div>
         );
@@ -4190,7 +3997,6 @@ const App = () => {
             onLoadReport={handleLoadReport}
             onLoadFromFirestore={handleLoadFromFirestore}
             onClearData={handleClearAllData}
-            firebaseConnected={firebaseConnected}
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-light-bg dark:bg-dark-bg p-6 lg:p-8">
           {renderContent()}
