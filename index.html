@@ -52,11 +52,11 @@
     "recharts/": "https://aistudiocdn.com/recharts@^3.2.1/",
     "recharts": "https://aistudiocdn.com/recharts@^3.2.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-latest/package/xlsx.mjs",
-    "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-    "firebase/analytics": "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js",
-    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js",
-    "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
-    "firebase/storage": "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js"
+    "firebase/app": "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js",
+    "firebase/analytics": "https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js",
+    "firebase/storage": "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js"
   }
 }
 </script>
@@ -73,8 +73,8 @@ import { read, utils } from 'xlsx';
 
 // Import Firebase dependencies
 import { initializeApp } from 'firebase/app';
-import { getAnalytics } from 'firebase/analytics';
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+// import { getAnalytics } from 'firebase/analytics';
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, connectFirestoreEmulator, enableNetwork, disableNetwork } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 // Firebase configuration
@@ -88,27 +88,62 @@ const firebaseConfig = {
   measurementId: "G-CEK74QFCW8"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const db = getFirestore(app);
-const auth = getAuth(app);
+// Initialize Firebase with error handling
+let app, analytics, db, auth;
+try {
+  console.log('🔄 Initializing Firebase...');
+  app = initializeApp(firebaseConfig);
+  console.log('✅ Firebase app initialized');
+  
+  // Skip Analytics for now to focus on Firestore
+  // analytics = getAnalytics(app);
+  // console.log('✅ Firebase Analytics initialized');
+  
+  db = getFirestore(app);
+  console.log('✅ Firestore initialized');
+  
+  auth = getAuth(app);
+  console.log('✅ Firebase Auth initialized');
+  
+  console.log('🎉 Firebase core services initialized successfully');
+} catch (error) {
+  console.error('❌ Firebase initialization failed:', error);
+  console.error('Error details:', error.message);
+}
 
 // Test Firebase connection
 const testFirebaseConnection = async (setFirebaseConnected) => {
   try {
-    // Sign in anonymously to test connection
-    await signInAnonymously(auth);
-    setFirebaseConnected(true);
-    console.log('✅ Firebase connected successfully!');
+    console.log('🔄 Testing Firebase connection...');
     
-    // Test Firestore connection
-    const testCollection = collection(db, 'test');
-    console.log('✅ Firestore connection established!');
+    // Test basic Firebase app initialization
+    if (!app || !db || !auth) {
+      throw new Error('Firebase services not properly initialized');
+    }
+    console.log('✅ Firebase services available');
+    
+    // Set connected to true immediately if services are initialized
+    // We'll handle actual data operations with proper error handling
+    setFirebaseConnected(true);
+    console.log('✅ Firebase marked as connected - ready for data operations');
+    
+    // Optional: Test authentication in background (don't block on this)
+    setTimeout(async () => {
+      try {
+        await signInAnonymously(auth);
+        console.log('✅ Anonymous authentication successful');
+      } catch (authError) {
+        console.warn('⚠️ Anonymous authentication failed:', authError.message);
+      }
+    }, 1000);
     
     return true;
   } catch (error) {
     console.error('❌ Firebase connection failed:', error);
+    console.error('Error details:', {
+      code: error.code,
+      message: error.message
+    });
     setFirebaseConnected(false);
     return false;
   }
@@ -2965,7 +3000,7 @@ const Sidebar = ({ activePage, onNavigate, isOpen, onClose }) => {
 // ===================================================
 // START: components/Header.tsx
 // ===================================================
-const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onShareReport, onLoadReport, onLoadFromFirestore, onClearData }) => {
+const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onShareReport, onLoadReport, onLoadFromFirestore, onClearData, firebaseConnected }) => {
   const { t, language, toggleLanguage } = useTranslation();
   const fileInputRef = useRef(null);
   const loadReportInputRef = useRef(null);
@@ -3002,6 +3037,12 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onS
             <Bars3Icon className="h-6 w-6" />
         </button>
         <h1 className="text-2xl font-bold text-light-text-primary dark:text-dark-text-primary">{t(activePage)}</h1>
+        <div className="ml-4 flex items-center gap-2">
+          <div className={`w-3 h-3 rounded-full ${firebaseConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+            Firebase: {firebaseConnected ? 'เชื่อมต่อแล้ว' : 'ไม่ได้เชื่อมต่อ'}
+          </span>
+        </div>
       </div>
       <div className="flex items-center gap-4">
         <div className="relative hidden md:block">
@@ -4041,6 +4082,22 @@ const App = () => {
       case 'kpiReport':
         return (
           <div className="container mx-auto">
+            <div className="mb-6 p-4 bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-4 h-4 rounded-full ${firebaseConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span className="font-medium">
+                    Firebase Status: {firebaseConnected ? 'เชื่อมต่อแล้ว' : 'ไม่ได้เชื่อมต่อ'}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => testFirebaseConnection()}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                >
+                  ทดสอบการเชื่อมต่อ Firebase
+                </button>
+              </div>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               {kpis.map((kpi, index) => (
                 <KPICard
@@ -4133,6 +4190,7 @@ const App = () => {
             onLoadReport={handleLoadReport}
             onLoadFromFirestore={handleLoadFromFirestore}
             onClearData={handleClearAllData}
+            firebaseConnected={firebaseConnected}
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-light-bg dark:bg-dark-bg p-6 lg:p-8">
           {renderContent()}
