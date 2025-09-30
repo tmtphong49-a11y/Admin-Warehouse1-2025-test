@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
@@ -2073,6 +2074,19 @@ const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
             String(row.totalOT).toLowerCase().includes(searchString)
         );
     });
+    const groupedByDepartment = useMemo(() => {
+        const groups = {};
+        filteredData.forEach(row => {
+            const key = row.department && row.department.trim() !== '' ? row.department : 'OTHER';
+            if (!groups[key]) {
+                groups[key] = { rows: [], subtotal: 0 };
+            }
+            groups[key].rows.push(row);
+            const value = typeof row.totalOT === 'number' ? row.totalOT : parseFloat(String(row.totalOT));
+            groups[key].subtotal += (isNaN(value) ? 0 : value);
+        });
+        return Object.entries(groups).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    }, [filteredData]);
     const topEmployees = useMemo(() => {
         if (!tableData) return [];
         return [...tableData]
@@ -2204,20 +2218,32 @@ const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                                 </thead>
                                 <tbody className='divide-y divide-light-border dark:divide-dark-border'>
                                     {filteredData.length > 0 ? (
-                                        filteredData.map((row) => (
-                                            <tr key={row.employeeId} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.id}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.employeeId}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap max-w-xs truncate" title={row.name}>{row.name}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.position}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.department}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-center">{row.grade}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-center">{row.status}</td>
-                                                {row.monthlyOT.map((ot, i) => (
-                                                    <td key={i} className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{ot.toFixed(2)}</td>
+                                        groupedByDepartment.map(([dept, group]) => (
+                                            <React.Fragment key={dept}>
+                                                <tr className="bg-slate-50/60 dark:bg-dark-bg/50">
+                                                    <td colSpan={headers.length} className="p-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">Department: {dept}</span>
+                                                            <span className="text-sm font-semibold text-brand-primary">{group.subtotal.toFixed(2)}</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {group.rows.map((row, idx) => (
+                                                    <tr key={`${dept}-${row.employeeId}-${idx}`} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.id}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.employeeId}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap max-w-xs truncate" title={row.name}>{row.name}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.position}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.department}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-center">{row.grade}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-center">{row.status}</td>
+                                                        {row.monthlyOT.map((ot, i) => (
+                                                            <td key={i} className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{ot.toFixed(2)}</td>
+                                                        ))}
+                                                        <td className="p-4 text-sm font-bold text-brand-primary whitespace-nowrap text-right">{row.totalOT.toFixed(2)}</td>
+                                                    </tr>
                                                 ))}
-                                                <td className="p-4 text-sm font-bold text-brand-primary whitespace-nowrap text-right">{row.totalOT.toFixed(2)}</td>
-                                            </tr>
+                                            </React.Fragment>
                                         ))
                                     ) : (
                                         <tr>
@@ -2280,6 +2306,19 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
             String(row.totalLeave).toLowerCase().includes(searchString)
         );
     });
+    const groupedByDepartment = useMemo(() => {
+        const groups = {};
+        filteredData.forEach(row => {
+            const key = row.department && row.department.trim() !== '' ? row.department : 'OTHER';
+            if (!groups[key]) {
+                groups[key] = { rows: [], subtotal: 0 };
+            }
+            groups[key].rows.push(row);
+            const value = typeof row.totalLeave === 'number' ? row.totalLeave : parseFloat(String(row.totalLeave));
+            groups[key].subtotal += (isNaN(value) ? 0 : value);
+        });
+        return Object.entries(groups).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    }, [filteredData]);
     const topEmployees = useMemo(() => {
         if (!tableData) return [];
         return [...tableData]
@@ -2456,31 +2495,43 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                                 </thead>
                                 <tbody className='divide-y divide-light-border dark:divide-dark-border'>
                                     {filteredData.length > 0 ? (
-                                        filteredData.map((row) => (
-                                            <tr key={row.employeeId} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.id}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.employeeId}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap max-w-xs truncate" title={row.name}>{row.name}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.position}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.department}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-center">{row.grade}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-center">{row.status}</td>
-                                                {row.monthlyLeave.map((leave, i) => (
-                                                    <td key={i} className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{leave.toFixed(2)}</td>
+                                        groupedByDepartment.map(([dept, group]) => (
+                                            <React.Fragment key={dept}>
+                                                <tr className="bg-slate-50/60 dark:bg-dark-bg/50">
+                                                    <td colSpan={headers.length} className="p-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">DEPT.: {dept}</span>
+                                                            <span className="text-sm font-semibold text-brand-primary">{group.subtotal.toFixed(2)}</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {group.rows.map((row, idx) => (
+                                                    <tr key={`${dept}-${row.employeeId}-${idx}`} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.id}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.employeeId}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap max-w-xs truncate" title={row.name}>{row.name}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.position}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.department}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-center">{row.grade}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-center">{row.status}</td>
+                                                        {row.monthlyLeave.map((leave, i) => (
+                                                            <td key={i} className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{leave.toFixed(2)}</td>
+                                                        ))}
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.leaveWithoutVacation.toFixed(2)}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.totalLeaveWithVacation.toFixed(2)}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.vacationCarriedOver.toFixed(2)}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.vacationEntitlement.toFixed(2)}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.totalVacation.toFixed(2)}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.vacationUsed.toFixed(2)}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.vacationAccrued.toFixed(2)}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.sickLeave.toFixed(2)}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.personalLeave.toFixed(2)}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.birthdayLeave.toFixed(2)}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.otherLeave.toFixed(2)}</td>
+                                                        <td className="p-4 text-sm font-bold text-brand-primary whitespace-nowrap text-right">{row.totalLeave.toFixed(2)}</td>
+                                                    </tr>
                                                 ))}
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.leaveWithoutVacation.toFixed(2)}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.totalLeaveWithVacation.toFixed(2)}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.vacationCarriedOver.toFixed(2)}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.vacationEntitlement.toFixed(2)}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.totalVacation.toFixed(2)}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.vacationUsed.toFixed(2)}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.vacationAccrued.toFixed(2)}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.sickLeave.toFixed(2)}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.personalLeave.toFixed(2)}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.birthdayLeave.toFixed(2)}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.otherLeave.toFixed(2)}</td>
-                                                <td className="p-4 text-sm font-bold text-brand-primary whitespace-nowrap text-right">{row.totalLeave.toFixed(2)}</td>
-                                            </tr>
+                                            </React.Fragment>
                                         ))
                                     ) : (
                                         <tr>
