@@ -1798,6 +1798,19 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
             String(value).toLowerCase().includes(searchTerm.toLowerCase())
         )
     );
+    const groupedByMaterial = useMemo(() => {
+        const groups = {};
+        filteredData.forEach(row => {
+            const key = row.material && String(row.material).trim() !== '' ? row.material : 'อื่นๆ';
+            if (!groups[key]) {
+                groups[key] = { rows: [], subtotal: 0 };
+            }
+            groups[key].rows.push(row);
+            const price = parseFloat(String(row.totalPrice).replace(/[^0-9.-]+/g, "")) || 0;
+            groups[key].subtotal += price;
+        });
+        return Object.entries(groups).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    }, [filteredData]);
     const topItems = useMemo(() => {
         if (!tableData || tableData.length === 0) {
             return [];
@@ -1974,18 +1987,30 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
                                 </thead>
                                 <tbody className='divide-y divide-light-border dark:divide-dark-border'>
                                     {filteredData.length > 0 ? (
-                                        filteredData.map((row, index) => (
-                                            <tr key={index} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.date}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.material}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary max-w-xs truncate" title={row.description}>{row.description}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.quantity}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.unit}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.price}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.totalPrice}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.costCenter}</td>
-                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.department}</td>
-                                            </tr>
+                                        groupedByMaterial.map(([material, group]) => (
+                                            <React.Fragment key={material}>
+                                                <tr className="bg-slate-50/60 dark:bg-dark-bg/50">
+                                                    <td colSpan={headers.length} className="p-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">Material: {material}</span>
+                                                            <span className="text-sm font-semibold text-brand-primary">{group.subtotal.toLocaleString('th-TH', { style: 'currency', currency: 'THB' })}</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {group.rows.map((row, index) => (
+                                                    <tr key={`${material}-${index}`} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.date}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.material}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary max-w-xs truncate" title={row.description}>{row.description}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.quantity}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.unit}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.price}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.totalPrice}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.costCenter}</td>
+                                                        <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.department}</td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
                                         ))
                                     ) : (
                                         <tr>
