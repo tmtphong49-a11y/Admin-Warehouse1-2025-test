@@ -1,6 +1,5 @@
 
 
-
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
@@ -3173,14 +3172,12 @@ const App = () => {
 
       const cleared = await clearFirestoreCollection('kpi_reports');
       if (cleared) {
-        // ล้างข้อมูลใน state ด้วย
         setKpis([]);
         setChartData([]);
         setTableRows([]);
-        
-        alert('✅ ลบข้อมูลทั้งหมดจาก Firestore เรียบร้อยแล้ว');
+        alert('✅ ข้อมูล KPI ถูกลบเรียบร้อยแล้ว');
       } else {
-        alert('⚠️ เกิดข้อผิดพลาดในการลบข้อมูล');
+        alert('⚠️ ไม่สามารถลบข้อมูล KPI ได้ อาจเกิดจากปัญหาด้านสิทธิ์การเข้าถึง');
       }
     } catch (error) {
       console.error('Error clearing Firestore data:', error);
