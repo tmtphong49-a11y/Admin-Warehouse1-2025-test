@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
@@ -122,16 +123,9 @@ testFirebaseConnection();
 // Firestore helper functions
 const saveToFirestore = async (collectionName, data, docId = null) => {
   try {
-    console.log(`🔄 Attempting to save to Firestore collection: ${collectionName}`);
-    console.log('Firebase connected:', firebaseConnected);
-    console.log('Data to save:', data);
-    
     if (!firebaseConnected) {
-      console.warn('⚠️ Firebase not connected. Attempting to reconnect...');
-      const reconnected = await testFirebaseConnection();
-      if (!reconnected) {
-        throw new Error('Firebase connection failed. Cannot save to Firestore.');
-      }
+      console.warn('Firebase not connected. Data saved to localStorage only.');
+      return null;
     }
 
     const timestamp = new Date().toISOString();
@@ -141,34 +135,22 @@ const saveToFirestore = async (collectionName, data, docId = null) => {
       updatedAt: timestamp
     };
 
-    console.log('📝 Data with timestamp:', dataWithTimestamp);
-
     let docRef;
     if (docId) {
       // Update existing document
-      console.log(`🔄 Updating existing document: ${docId}`);
       docRef = doc(db, collectionName, docId);
       await updateDoc(docRef, { ...dataWithTimestamp, updatedAt: timestamp });
       console.log(`✅ Updated document in ${collectionName}:`, docId);
-      return docId;
     } else {
       // Create new document
-      console.log(`🔄 Creating new document in ${collectionName}`);
       docRef = await addDoc(collection(db, collectionName), dataWithTimestamp);
       console.log(`✅ Saved to Firestore collection ${collectionName}:`, docRef.id);
-      return docRef.id;
     }
     
+    return docRef.id;
   } catch (error) {
     console.error(`❌ Error saving to Firestore collection ${collectionName}:`, error);
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack
-    });
-    
-    // Re-throw the error so it can be caught by the calling function
-    throw new Error(`Firestore save failed: ${error.message}`);
+    return null;
   }
 };
 
@@ -1146,20 +1128,7 @@ const mockApi = {
 // ===================================================
 // START: components/KPICard.tsx
 // ===================================================
-const IconComponent = ({ name, className, customIcon }) => {
-    // ถ้ามี custom icon ให้ใช้ custom icon
-    if (customIcon) {
-        return (
-            <img 
-                src={customIcon} 
-                alt="Custom KPI Icon" 
-                className={`${className} object-contain`}
-                style={{ width: '2rem', height: '2rem' }}
-            />
-        );
-    }
-    
-    // ถ้าไม่มี custom icon ให้ใช้ default icon
+const IconComponent = ({ name, className }) => {
     switch (name) {
         case 'CurrencyDollarIcon': return <CurrencyDollarIcon className={className} />;
         case 'ShoppingCartIcon': return <ShoppingCartIcon className={className} />;
@@ -1180,10 +1149,8 @@ const IconComponent = ({ name, className, customIcon }) => {
         default: return null;
     }
 };
-const KPICard = ({ title, value, target, trend, trendDirection = 'neutral', icon, color, customIcon, onIconUpload, onIconRemove }) => {
+const KPICard = ({ title, value, target, trend, trendDirection = 'neutral', icon, color }) => {
   const { t } = useTranslation();
-  const fileInputRef = React.useRef(null);
-  
   const TrendIcon = () => {
     switch (trendDirection) {
       case 'up':
@@ -1194,52 +1161,13 @@ const KPICard = ({ title, value, target, trend, trendDirection = 'neutral', icon
         return <MinusIcon className="h-5 w-5 text-light-text-secondary dark:text-dark-text-secondary" />;
     }
   };
-  
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file && onIconUpload) {
-      onIconUpload(title, file);
-    }
-    // Reset input
-    e.target.value = '';
-  };
-  
   const trendColor = trendDirection === 'up' ? 'text-brand-success' : trendDirection === 'down' ? 'text-brand-danger' : 'text-light-text-secondary dark:text-dark-text-secondary';
-  
   return (
-    <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl p-6 flex flex-col gap-4 transform hover:-translate-y-1 transition-transform duration-300 shadow-lg relative group">
-      {/* Icon Upload Controls */}
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="p-1 bg-brand-primary text-white rounded-md hover:bg-brand-primary/80 transition-colors"
-          title="อัปโหลดไอคอน"
-        >
-          <ArrowUpTrayIcon className="h-4 w-4" />
-        </button>
-        {customIcon && (
-          <button
-            onClick={() => onIconRemove && onIconRemove(title)}
-            className="p-1 bg-brand-danger text-white rounded-md hover:bg-brand-danger/80 transition-colors"
-            title="ลบไอคอน"
-          >
-            <XMarkIcon className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-      
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileSelect}
-        className="hidden"
-      />
-      
+    <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl p-6 flex flex-col gap-4 transform hover:-translate-y-1 transition-transform duration-300 shadow-lg">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium text-light-text-secondary dark:text-dark-text-secondary pr-12">{title}</h3>
+        <h3 className="text-lg font-medium text-light-text-secondary dark:text-dark-text-secondary">{title}</h3>
         <div className={color}>
-          <IconComponent name={icon} className="h-8 w-8" customIcon={customIcon} />
+          <IconComponent name={icon} className="h-8 w-8" />
         </div>
       </div>
       <div>
@@ -1331,46 +1259,13 @@ const MainChart = ({ data, title, theme }) => {
 // ===================================================
 // START: components/DataTable.tsx
 // ===================================================
-const DataTable = ({ data, tableRows, setTableRows }) => {
+const DataTable = ({ data }) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedKpi, setSelectedKpi] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedKpi, setEditedKpi] = useState(null);
-  
-  // โหลดข้อมูล KPI Details อัตโนมัติเมื่อ component โหลด
-  useEffect(() => {
-    const loadInitialKpiDetails = async () => {
-      try {
-        const kpiDetailsData = await getFromFirestore('kpi_details');
-        
-        if (kpiDetailsData && kpiDetailsData.length > 0) {
-          const updatedData = tableRows.map(row => {
-            const savedKpi = kpiDetailsData.find(saved => saved.kpiTitle === row.kpi.title);
-            if (savedKpi && savedKpi.kpiData) {
-              return {
-                ...row,
-                ...savedKpi.kpiData,
-                lastUpdated: savedKpi.updatedAt,
-                updatedBy: savedKpi.updatedBy
-              };
-            }
-            return row;
-          });
-          
-          setTableRows(updatedData);
-          console.log('✅ KPI Details loaded automatically on component mount');
-        }
-      } catch (error) {
-        console.error('❌ Error loading KPI Details on mount:', error);
-      }
-    };
-    
-    if (tableRows && tableRows.length > 0) {
-      loadInitialKpiDetails();
-    }
-  }, []); // เรียกใช้เพียงครั้งเดียวเมื่อ component โหลด
   
   const filteredData = data.filter(row => {
     const lowerCaseSearchTerm = searchTerm.toLowerCase();
@@ -1488,44 +1383,12 @@ const DataTable = ({ data, tableRows, setTableRows }) => {
     };
   };
 
-  const handleRowClick = async (row) => {
-    try {
-      // โหลดข้อมูลล่าสุดจาก Firestore ก่อนเปิด modal
-      const kpiDetailsData = await getFromFirestore('kpi_details');
-      let updatedRow = { ...row };
-      let kpiDetails = getKpiDetails(row.kpi.title);
-      
-      if (kpiDetailsData && kpiDetailsData.length > 0) {
-        const savedKpi = kpiDetailsData.find(saved => saved.kpiTitle === row.kpi.title);
-        if (savedKpi && savedKpi.kpiData) {
-          updatedRow = {
-            ...row,
-            ...savedKpi.kpiData,
-            lastUpdated: savedKpi.updatedAt,
-            updatedBy: savedKpi.updatedBy
-          };
-          
-          // ใช้ details ที่บันทึกไว้ใน Firestore ถ้ามี
-          if (savedKpi.kpiData.details) {
-            kpiDetails = savedKpi.kpiData.details;
-          }
-        }
-      }
-      
-      setSelectedKpi({
-        ...updatedRow,
-        details: kpiDetails
-      });
-      setIsModalOpen(true);
-    } catch (error) {
-      console.error('Error loading latest KPI data:', error);
-      // ถ้าเกิดข้อผิดพลาด ให้แสดงข้อมูลเดิม
-      setSelectedKpi({
-        ...row,
-        details: getKpiDetails(row.kpi.title)
-      });
-      setIsModalOpen(true);
-    }
+  const handleRowClick = (row) => {
+    setSelectedKpi({
+      ...row,
+      details: getKpiDetails(row.kpi.title)
+    });
+    setIsModalOpen(true);
   };
 
   const closeModal = () => {
@@ -1545,121 +1408,49 @@ const DataTable = ({ data, tableRows, setTableRows }) => {
     setEditedKpi(null);
   };
 
-  const loadKpiDetailsFromFirestore = async () => {
-    try {
-      console.log('🔄 Loading KPI Details from Firestore...');
-      
-      // โหลดข้อมูล KPI Details จาก Firestore
-      const kpiDetailsData = await getFromFirestore('kpi_details');
-      
-      if (kpiDetailsData && kpiDetailsData.length > 0) {
-        // อัปเดตข้อมูลที่มีอยู่ด้วยข้อมูลจาก Firestore
-        const updatedData = tableRows.map(row => {
-          const savedKpi = kpiDetailsData.find(saved => saved.kpiTitle === row.kpi.title);
-          if (savedKpi && savedKpi.kpiData) {
-            return {
-              ...row,
-              ...savedKpi.kpiData,
-              lastUpdated: savedKpi.updatedAt,
-              updatedBy: savedKpi.updatedBy
-            };
-          }
-          return row;
-        });
-        
-        // อัปเดตข้อมูลในตาราง
-        setTableRows(updatedData);
-        
-        // อัปเดต selectedKpi ถ้ามีการเลือกอยู่
-        if (selectedKpi) {
-          const savedSelectedKpi = kpiDetailsData.find(saved => saved.kpiTitle === selectedKpi.kpi.title);
-          if (savedSelectedKpi && savedSelectedKpi.kpiData) {
-            setSelectedKpi({
-              ...selectedKpi,
-              ...savedSelectedKpi.kpiData,
-              lastUpdated: savedSelectedKpi.updatedAt,
-              updatedBy: savedSelectedKpi.updatedBy
-            });
-          }
-        }
-        
-        alert('✅ โหลดข้อมูล KPI Details ล่าสุดจาก Firestore เรียบร้อยแล้ว');
-        console.log('✅ KPI Details loaded successfully from Firestore');
-      } else {
-        alert('ℹ️ ไม่พบข้อมูล KPI Details ใน Firestore');
-        console.log('ℹ️ No KPI Details found in Firestore');
-      }
-    } catch (error) {
-      console.error('❌ Error loading KPI Details from Firestore:', error);
-      alert('❌ เกิดข้อผิดพลาดในการโหลดข้อมูล KPI Details\nกรุณาลองใหม่อีกครั้ง');
-    }
-  };
-
   const saveEdit = async () => {
     try {
-      console.log('🔄 Starting save process...');
-      console.log('editedKpi:', editedKpi);
-      console.log('selectedKpi:', selectedKpi);
-      
-      // ตรวจสอบข้อมูลที่จำเป็น
-      if (!editedKpi) {
-        console.error('❌ editedKpi is null or undefined');
-        alert('❌ ข้อมูลที่แก้ไขไม่ถูกต้อง\nกรุณาลองแก้ไขใหม่อีกครั้ง');
-        return;
-      }
-      
-      if (!editedKpi.kpi || !editedKpi.kpi.title) {
-        console.error('❌ editedKpi.kpi.title is missing');
-        alert('❌ ไม่พบชื่อ KPI\nกรุณาลองแก้ไขใหม่อีกครั้ง');
-        return;
-      }
-      
       // อัปเดตข้อมูลในตาราง
-      const updatedData = tableRows.map(row => 
+      const updatedData = data.map(row => 
         row.kpi.title === selectedKpi.kpi.title ? editedKpi : row
       );
       
-      // อัปเดต state ของตาราง
-      setTableRows(updatedData);
-      console.log('✅ Table data updated');
-      
-      // เตรียมข้อมูลสำหรับบันทึก
-      const saveData = {
+      // บันทึกข้อมูล KPI Details ที่แก้ไขลง Firebase
+      const kpiDetailsData = {
         kpiTitle: editedKpi.kpi.title,
         kpiData: editedKpi,
-        updatedAt: new Date().toISOString(),
         updatedBy: 'Admin', // สามารถเปลี่ยนเป็นชื่อผู้ใช้จริงได้
-        timestamp: Date.now()
+        updatedAt: new Date().toISOString()
       };
       
-      console.log('💾 Saving data to Firestore:', saveData);
+      // บันทึกลง Firebase collection 'kpi_details'
+      const docId = await saveToFirestore('kpi_details', kpiDetailsData);
       
-      // บันทึกไปยัง Firestore collection 'kpi_details'
-      const result = await saveToFirestore('kpi_details', saveData);
-      
-      if (result) {
-        console.log('✅ Data saved successfully to Firestore');
+      if (docId) {
+        console.log('✅ KPI Details saved to Firebase:', docId);
         
-        // อัปเดต state
+        // อัปเดต state ในหน้าปัจจุบัน
         setSelectedKpi(editedKpi);
         setIsEditMode(false);
         
-        // แจ้งเตือนความสำเร็จ
-        alert('✅ บันทึกข้อมูล KPI เรียบร้อยแล้ว\nข้อมูลถูกบันทึกออนไลน์ ผู้จัดการสามารถเห็นได้');
+        // อัปเดตข้อมูลในตาราง KPI Details
+        if (typeof setTableRows === 'function') {
+          setTableRows(updatedData);
+        }
+        
+        alert('✅ บันทึกข้อมูล KPI Details ลง Firebase เรียบร้อยแล้ว');
       } else {
-        console.warn('⚠️ Firestore save returned null, but no error thrown');
-        alert('⚠️ บันทึกข้อมูลเรียบร้อย แต่อาจไม่ได้บันทึกออนไลน์\nข้อมูลถูกบันทึกในเครื่องแล้ว');
+        // ถ้าบันทึก Firebase ไม่สำเร็จ ยังคงบันทึกใน local state
+        setSelectedKpi(editedKpi);
+        setIsEditMode(false);
+        alert('⚠️ บันทึกข้อมูลใน Local เรียบร้อยแล้ว (Firebase ไม่พร้อมใช้งาน)');
       }
-      
     } catch (error) {
-      console.error('❌ Error saving KPI details:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        editedKpi: editedKpi,
-        selectedKpi: selectedKpi
-      });
-      alert('❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล KPI Details\nกรุณาลองใหม่อีกครั้ง\n\nรายละเอียดข้อผิดพลาด: ' + error.message);
+      console.error('❌ Error saving KPI Details:', error);
+      // ถ้าเกิดข้อผิดพลาด ยังคงบันทึกใน local state
+      setSelectedKpi(editedKpi);
+      setIsEditMode(false);
+      alert('⚠️ บันทึกข้อมูลใน Local เรียบร้อยแล้ว (เกิดข้อผิดพลาดกับ Firebase)');
     }
   };
 
@@ -1676,25 +1467,15 @@ const DataTable = ({ data, tableRows, setTableRows }) => {
     <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
       <div className="p-6 border-b border-light-border dark:border-dark-border flex justify-between items-center flex-wrap gap-4">
         <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('kpiDetails')}</h3>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={loadKpiDetailsFromFirestore}
-            className="bg-brand-primary hover:bg-brand-secondary text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2"
-            title="โหลดข้อมูล KPI Details ล่าสุดจาก Firestore"
-          >
-            <ArrowPathIcon className="h-4 w-4" />
-            โหลดข้อมูลล่าสุด
-          </button>
-          <div className="relative">
-            <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
-            <input
-              type="text"
-              placeholder={t('searchDetails')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary w-full sm:w-64"
-            />
-          </div>
+        <div className="relative">
+          <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
+          <input
+            type="text"
+            placeholder={t('searchDetails')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary w-full sm:w-64"
+          />
         </div>
       </div>
       <div className="overflow-auto max-h-[600px]">
@@ -1786,15 +1567,6 @@ const DataTable = ({ data, tableRows, setTableRows }) => {
                     selectedKpi.kpi.measurement
                   )}
                 </p>
-                {/* แสดงข้อมูลการอัปเดตล่าสุด */}
-                {selectedKpi.lastUpdated && (
-                  <div className="mt-2 text-xs text-light-text-secondary dark:text-dark-text-secondary">
-                    <p>อัปเดตล่าสุด: {new Date(selectedKpi.lastUpdated).toLocaleString('th-TH')}</p>
-                    {selectedKpi.updatedBy && (
-                      <p>โดย: {selectedKpi.updatedBy}</p>
-                    )}
-                  </div>
-                )}
               </div>
               <div className="flex gap-2 ml-4">
                 {!isEditMode ? (
@@ -2161,9 +1933,6 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
                                 value={kpi.value}
                                 icon={kpi.icon}
                                 color={kpi.color}
-                                customIcon={customIcons[kpi.title]}
-                                onIconUpload={handleIconUpload}
-                                onIconRemove={removeCustomIcon}
                             />
                         ))}
                     </div>
@@ -2376,16 +2145,13 @@ const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
             {tableData.length > 0 ? (
                 <div className="flex flex-col gap-8">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {otKpis.map((kpi, index) => (
+                        {kpis.map((kpi, index) => (
                             <KPICard
                                 key={index}
                                 title={kpi.title}
                                 value={kpi.value}
                                 icon={kpi.icon}
                                 color={kpi.color}
-                                customIcon={customIcons[kpi.title]}
-                                onIconUpload={handleIconUpload}
-                                onIconRemove={removeCustomIcon}
                             />
                         ))}
                     </div>
@@ -2606,16 +2372,13 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
             {tableData.length > 0 ? (
                 <div className="flex flex-col gap-8">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {leaveKpis.map((kpi, index) => (
+                        {kpis.map((kpi, index) => (
                             <KPICard
                                 key={index}
                                 title={kpi.title}
                                 value={kpi.value}
                                 icon={kpi.icon}
                                 color={kpi.color}
-                                customIcon={customIcons[kpi.title]}
-                                onIconUpload={handleIconUpload}
-                                onIconRemove={removeCustomIcon}
                             />
                         ))}
                     </div>
@@ -2825,16 +2588,13 @@ const AccidentReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => 
             {tableData.length > 0 ? (
                 <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-8">
-                        {accidentKpis.map((kpi, index) => (
+                        {kpis.map((kpi, index) => (
                             <KPICard
                                 key={index}
                                 title={kpi.title}
                                 value={kpi.value}
                                 icon={kpi.icon}
                                 color={kpi.color}
-                                customIcon={customIcons[kpi.title]}
-                                onIconUpload={handleIconUpload}
-                                onIconRemove={removeCustomIcon}
                             />
                         ))}
                     </div>
@@ -3020,9 +2780,6 @@ const WorkloadReport = ({ data, theme, onFileUpload }) => {
                         value={kpi.value}
                         icon={kpi.icon}
                         color={kpi.color}
-                        customIcon={customIcons[kpi.title]}
-                        onIconUpload={handleIconUpload}
-                        onIconRemove={removeCustomIcon}
                     />
                 ))}
             </div>
@@ -3377,9 +3134,6 @@ const App = () => {
   const [activePage, setActivePage] = useState(getInitialState('activePage', 'kpiReport'));
   const [theme, setTheme] = useState(getInitialState('theme', 'dark'));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
-  // Custom Icon State
-  const [customIcons, setCustomIcons] = useState(getInitialState('customIcons', {}));
 
   const toggleTheme = () => {
       setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'));
@@ -3439,47 +3193,56 @@ const App = () => {
     localStorage.setItem('activePage', JSON.stringify(activePage));
   }, [activePage]);
 
-  useEffect(() => {
-    localStorage.setItem('customIcons', JSON.stringify(customIcons));
-  }, [customIcons]);
-
-  // ฟังก์ชันสำหรับอัปโหลดไอคอน custom
-  const handleIconUpload = (kpiTitle, file) => {
-    if (!file) return;
-    
-    // ตรวจสอบประเภทไฟล์
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml'];
-    if (!allowedTypes.includes(file.type)) {
-      alert('กรุณาเลือกไฟล์รูปภาพ (JPG, PNG, GIF, SVG)');
-      return;
+  // ฟังก์ชันโหลดข้อมูล KPI Details จาก Firebase และผสานกับข้อมูลปัจจุบัน
+  const loadKpiDetailsFromFirestore = async () => {
+    try {
+      console.log('🔄 Loading KPI Details from Firebase...');
+      const kpiDetailsData = await getFromFirestore('kpi_details');
+      
+      if (kpiDetailsData.length > 0) {
+        // สร้าง Map เพื่อเก็บข้อมูล KPI Details ล่าสุดของแต่ละ KPI
+        const latestKpiDetails = new Map();
+        
+        kpiDetailsData.forEach(item => {
+          const kpiTitle = item.kpiTitle;
+          const currentItem = latestKpiDetails.get(kpiTitle);
+          
+          // เก็บเฉพาะข้อมูลล่าสุด (เรียงตาม updatedAt)
+          if (!currentItem || new Date(item.updatedAt) > new Date(currentItem.updatedAt)) {
+            latestKpiDetails.set(kpiTitle, item);
+          }
+        });
+        
+        // อัปเดตข้อมูลในตาราง KPI Details
+        setTableRows(prevTableRows => {
+          return prevTableRows.map(row => {
+            const kpiDetail = latestKpiDetails.get(row.kpi.title);
+            if (kpiDetail && kpiDetail.kpiData) {
+              console.log(`✅ Updated KPI Details for: ${row.kpi.title}`);
+              return {
+                ...row,
+                ...kpiDetail.kpiData,
+                // รักษาโครงสร้างเดิมของ kpi object
+                kpi: {
+                  ...row.kpi,
+                  ...kpiDetail.kpiData.kpi
+                }
+              };
+            }
+            return row;
+          });
+        });
+        
+        console.log(`✅ Loaded ${latestKpiDetails.size} KPI Details from Firebase`);
+        return true;
+      } else {
+        console.log('ℹ️ No KPI Details found in Firebase');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error loading KPI Details from Firebase:', error);
+      return false;
     }
-    
-    // ตรวจสอบขนาดไฟล์ (ไม่เกิน 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      alert('ขนาดไฟล์ต้องไม่เกิน 2MB');
-      return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const imageData = e.target.result;
-      setCustomIcons(prev => ({
-        ...prev,
-        [kpiTitle]: imageData
-      }));
-      alert('✅ อัปโหลดไอคอนเรียบร้อยแล้ว');
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // ฟังก์ชันสำหรับลบไอคอน custom
-  const removeCustomIcon = (kpiTitle) => {
-    setCustomIcons(prev => {
-      const newIcons = { ...prev };
-      delete newIcons[kpiTitle];
-      return newIcons;
-    });
-    alert('✅ ลบไอคอนเรียบร้อยแล้ว');
   };
 
   // ฟังก์ชัน wrapper สำหรับโหลดข้อมูลจาก Firestore
@@ -3499,8 +3262,13 @@ const App = () => {
   const handleLoadFromFirestore = async () => {
     try {
       const loaded = await loadDataFromFirestore();
+      
+      // โหลดข้อมูล KPI Details หลังจากโหลดข้อมูลหลักเสร็จแล้ว
       if (loaded) {
-        alert('✅ โหลดข้อมูลล่าสุดจาก Firestore เรียบร้อยแล้ว');
+        setTimeout(async () => {
+          await loadKpiDetailsFromFirestore();
+        }, 1500);
+        alert('✅ โหลดข้อมูลล่าสุดจาก Firestore เรียบร้อยแล้ว (รวม KPI Details)');
       } else {
         alert('⚠️ ไม่พบข้อมูลใน Firestore หรือเกิดข้อผิดพลาด');
       }
@@ -3575,6 +3343,20 @@ const App = () => {
     };
     fetchData();
   }, []);
+
+  // useEffect สำหรับโหลดข้อมูล KPI Details จาก Firebase เมื่อ tableRows เปลี่ยนแปลง
+  useEffect(() => {
+    const loadKpiDetails = async () => {
+      if (tableRows.length > 0 && firebaseConnected) {
+        // รอสักครู่เพื่อให้ tableRows ถูกตั้งค่าเสร็จสิ้น
+        setTimeout(async () => {
+          await loadKpiDetailsFromFirestore();
+        }, 1000);
+      }
+    };
+    
+    loadKpiDetails();
+  }, [tableRows.length]); // ทำงานเมื่อจำนวน tableRows เปลี่ยนแปลง
 
   const handleNavigate = (page) => {
     setActivePage(page);
@@ -4221,15 +4003,12 @@ const App = () => {
                   trendDirection={kpi.trendDirection}
                   icon={kpi.icon}
                   color={kpi.color}
-                  customIcon={customIcons[kpi.title]}
-                  onIconUpload={handleIconUpload}
-                  onIconRemove={removeCustomIcon}
                 />
               ))}
             </div>
             <div className="flex flex-col gap-8">
               <MainChart data={chartData} theme={theme} />
-              <DataTable data={tableRows} tableRows={tableRows} setTableRows={setTableRows} />
+              <DataTable data={tableRows} />
             </div>
           </div>
         );
