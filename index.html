@@ -249,6 +249,8 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
       setWorkloadReportData
     } = stateSetters;
     
+    let hasAnyData = false;
+    
     // โหลดข้อมูล KPI ล่าสุด
     const kpiData = await getFromFirestore('kpi_reports', isFirebaseConnected);
     if (kpiData.length > 0) {
@@ -258,7 +260,13 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
         setChartData(latestKpi.data.chartData || []);
         setTableRows(latestKpi.data.tableRows || []);
         console.log('✅ Loaded latest KPI data');
+        hasAnyData = true;
       }
+    } else {
+      // ตั้งค่าข้อมูลว่างสำหรับ KPI
+      setKpis([]);
+      setChartData([]);
+      setTableRows([]);
     }
 
     // โหลดข้อมูล Consumables ล่าสุด
@@ -270,7 +278,13 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
         setConsumablesKpis(latestConsumables.data.kpis || []);
         setConsumablesChartData(latestConsumables.data.chartData || []);
         console.log('✅ Loaded latest Consumables data');
+        hasAnyData = true;
       }
+    } else {
+      // ตั้งค่าข้อมูลว่างสำหรับ Consumables
+      setConsumablesTableData([]);
+      setConsumablesKpis([]);
+      setConsumablesChartData([]);
     }
 
     // โหลดข้อมูล OT ล่าสุด
@@ -282,7 +296,13 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
         setOtKpis(latestOt.data.kpis || []);
         setOtChartData(latestOt.data.chartData || []);
         console.log('✅ Loaded latest OT data');
+        hasAnyData = true;
       }
+    } else {
+      // ตั้งค่าข้อมูลว่างสำหรับ OT
+      setOtTableData([]);
+      setOtKpis([]);
+      setOtChartData([]);
     }
 
     // โหลดข้อมูล Leave ล่าสุด
@@ -294,7 +314,13 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
         setLeaveKpis(latestLeave.data.kpis || []);
         setLeaveChartData(latestLeave.data.chartData || []);
         console.log('✅ Loaded latest Leave data');
+        hasAnyData = true;
       }
+    } else {
+      // ตั้งค่าข้อมูลว่างสำหรับ Leave
+      setLeaveTableData([]);
+      setLeaveKpis([]);
+      setLeaveChartData([]);
     }
 
     // โหลดข้อมูล Accident ล่าสุด
@@ -306,7 +332,13 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
         setAccidentKpis(latestAccident.data.kpis || []);
         setAccidentChartData(latestAccident.data.chartData || []);
         console.log('✅ Loaded latest Accident data');
+        hasAnyData = true;
       }
+    } else {
+      // ตั้งค่าข้อมูลว่างสำหรับ Accident
+      setAccidentTableData([]);
+      setAccidentKpis([]);
+      setAccidentChartData([]);
     }
 
     // โหลดข้อมูล Workload ล่าสุด
@@ -316,11 +348,20 @@ const loadLatestDataFromFirestore = async (stateSetters, isFirebaseConnected = f
       if (latestWorkload.data) {
         setWorkloadReportData(latestWorkload.data.data || []);
         console.log('✅ Loaded latest Workload data');
+        hasAnyData = true;
       }
+    } else {
+      // ตั้งค่าข้อมูลว่างสำหรับ Workload
+      setWorkloadReportData([]);
     }
 
-    console.log('🎉 Finished loading all latest data from Firestore');
-    return true;
+    if (hasAnyData) {
+      console.log('🎉 Finished loading data from Firestore');
+      return true;
+    } else {
+      console.log('📭 No data found in Firestore - all collections are empty');
+      return false;
+    }
   } catch (error) {
     console.error('❌ Error loading data from Firestore:', error);
     return false;
@@ -3301,50 +3342,28 @@ const App = () => {
         }
 
         if (firebaseConnected) {
-          // ลองโหลดข้อมูลจาก Firestore ก่อน
-          const firestoreLoaded = await loadDataFromFirestore();
-          
-          if (!firestoreLoaded) {
-            // ถ้าโหลดจาก Firestore ไม่ได้ ให้โหลดจาก mockApi แทน
-            console.log('🔄 Fallback to loading mock data...');
-            const data = await mockApi.getData();
-            setKpis(data.kpiData.kpis);
-            setChartData(data.kpiData.chartData);
-            setTableRows(data.kpiData.tableRows);
-            setConsumablesTableData(data.consumablesData.tableData);
-            setConsumablesKpis(data.consumablesData.kpis);
-            setConsumablesChartData(data.consumablesData.chartData);
-            setOtTableData(data.otData.tableData);
-            setOtKpis(data.otData.kpis);
-            setOtChartData(data.otData.chartData);
-            setLeaveTableData(data.leaveData.tableData);
-            setLeaveKpis(data.leaveData.kpis);
-            setLeaveChartData(data.leaveData.chartData);
-            setAccidentTableData(data.accidentData.tableData);
-            setAccidentKpis(data.accidentData.kpis);
-            setAccidentChartData(data.accidentData.chartData);
-            setWorkloadReportData(data.workloadData.data);
-          }
+          // โหลดข้อมูลจาก Firestore (ถ้าไม่มีข้อมูลจะแสดงข้อมูลว่าง)
+          console.log('🔄 Loading data from Firestore...');
+          await loadDataFromFirestore();
         } else {
-          // ถ้า Firebase ไม่เชื่อมต่อ ให้โหลด mock data
-          console.log('🔄 Firebase not connected, loading mock data...');
-          const data = await mockApi.getData();
-          setKpis(data.kpiData.kpis);
-          setChartData(data.kpiData.chartData);
-          setTableRows(data.kpiData.tableRows);
-          setConsumablesTableData(data.consumablesData.tableData);
-          setConsumablesKpis(data.consumablesData.kpis);
-          setConsumablesChartData(data.consumablesData.chartData);
-          setOtTableData(data.otData.tableData);
-          setOtKpis(data.otData.kpis);
-          setOtChartData(data.otData.chartData);
-          setLeaveTableData(data.leaveData.tableData);
-          setLeaveKpis(data.leaveData.kpis);
-          setLeaveChartData(data.leaveData.chartData);
-          setAccidentTableData(data.accidentData.tableData);
-          setAccidentKpis(data.accidentData.kpis);
-          setAccidentChartData(data.accidentData.chartData);
-          setWorkloadReportData(data.workloadData.data);
+          // ถ้า Firebase ไม่เชื่อมต่อ ให้ตั้งค่าข้อมูลว่าง
+          console.log('⚠️ Firebase not connected, setting empty data...');
+          setKpis([]);
+          setChartData([]);
+          setTableRows([]);
+          setConsumablesTableData([]);
+          setConsumablesKpis([]);
+          setConsumablesChartData([]);
+          setOtTableData([]);
+          setOtKpis([]);
+          setOtChartData([]);
+          setLeaveTableData([]);
+          setLeaveKpis([]);
+          setLeaveChartData([]);
+          setAccidentTableData([]);
+          setAccidentKpis([]);
+          setAccidentChartData([]);
+          setWorkloadReportData([]);
         }
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
