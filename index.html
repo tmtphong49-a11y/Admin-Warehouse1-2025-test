@@ -1339,6 +1339,39 @@ const DataTable = ({ data, tableRows, setTableRows }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedKpi, setEditedKpi] = useState(null);
   
+  // โหลดข้อมูล KPI Details อัตโนมัติเมื่อ component โหลด
+  useEffect(() => {
+    const loadInitialKpiDetails = async () => {
+      try {
+        const kpiDetailsData = await getFromFirestore('kpi_details');
+        
+        if (kpiDetailsData && kpiDetailsData.length > 0) {
+          const updatedData = tableRows.map(row => {
+            const savedKpi = kpiDetailsData.find(saved => saved.kpiTitle === row.kpi.title);
+            if (savedKpi && savedKpi.kpiData) {
+              return {
+                ...row,
+                ...savedKpi.kpiData,
+                lastUpdated: savedKpi.updatedAt,
+                updatedBy: savedKpi.updatedBy
+              };
+            }
+            return row;
+          });
+          
+          setTableRows(updatedData);
+          console.log('✅ KPI Details loaded automatically on component mount');
+        }
+      } catch (error) {
+        console.error('❌ Error loading KPI Details on mount:', error);
+      }
+    };
+    
+    if (tableRows && tableRows.length > 0) {
+      loadInitialKpiDetails();
+    }
+  }, []); // เรียกใช้เพียงครั้งเดียวเมื่อ component โหลด
+  
   const filteredData = data.filter(row => {
     const lowerCaseSearchTerm = searchTerm.toLowerCase();
     return (
@@ -1460,6 +1493,7 @@ const DataTable = ({ data, tableRows, setTableRows }) => {
       // โหลดข้อมูลล่าสุดจาก Firestore ก่อนเปิด modal
       const kpiDetailsData = await getFromFirestore('kpi_details');
       let updatedRow = { ...row };
+      let kpiDetails = getKpiDetails(row.kpi.title);
       
       if (kpiDetailsData && kpiDetailsData.length > 0) {
         const savedKpi = kpiDetailsData.find(saved => saved.kpiTitle === row.kpi.title);
@@ -1470,12 +1504,17 @@ const DataTable = ({ data, tableRows, setTableRows }) => {
             lastUpdated: savedKpi.updatedAt,
             updatedBy: savedKpi.updatedBy
           };
+          
+          // ใช้ details ที่บันทึกไว้ใน Firestore ถ้ามี
+          if (savedKpi.kpiData.details) {
+            kpiDetails = savedKpi.kpiData.details;
+          }
         }
       }
       
       setSelectedKpi({
         ...updatedRow,
-        details: getKpiDetails(updatedRow.kpi.title)
+        details: kpiDetails
       });
       setIsModalOpen(true);
     } catch (error) {
