@@ -1331,7 +1331,7 @@ const MainChart = ({ data, title, theme }) => {
 // ===================================================
 // START: components/DataTable.tsx
 // ===================================================
-const DataTable = ({ data }) => {
+const DataTable = ({ data, tableRows, setTableRows }) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedKpi, setSelectedKpi] = useState(null);
@@ -4190,7 +4190,7 @@ const App = () => {
             </div>
             <div className="flex flex-col gap-8">
               <MainChart data={chartData} theme={theme} />
-              <DataTable data={tableRows} />
+              <DataTable data={tableRows} tableRows={tableRows} setTableRows={setTableRows} />
             </div>
           </div>
         );
